@@ -7,6 +7,41 @@ const api = axios.create({
   },
 });
 
+// Add token to requests if available
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Auth API
+export const register = async (userData) => {
+  try {
+    const response = await api.post("/user-service/register", userData);
+    return response.data;
+  } catch (error) {
+    console.error("Error registering user:", error);
+    throw error;
+  }
+};
+
+export const login = async (credentials) => {
+  try {
+    const response = await api.post("/user-service/login", credentials);
+    return response.data;
+  } catch (error) {
+    console.error("Error logging in:", error);
+    throw error;
+  }
+};
+
 // Products API
 export const getProducts = async () => {
   try {

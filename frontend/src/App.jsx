@@ -1,10 +1,24 @@
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { AuthProvider } from "./context/AuthContext";
+import Header from "./components/Header";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
   const [cart, setCart] = useState([]);
 
   // Load cart from localStorage
@@ -22,10 +36,12 @@ function App() {
 
   const addToCart = (product) => {
     setCart((prevCart) => {
-      const existing = prevCart.find((item) => item.id === product.id);
+      const existing = prevCart.find(
+        (item) => item.product_id === product.product_id
+      );
       if (existing) {
         return prevCart.map((item) =>
-          item.id === product.id
+          item.product_id === product.product_id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -35,7 +51,9 @@ function App() {
   };
 
   const removeFromCart = (productId) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+    setCart((prevCart) =>
+      prevCart.filter((item) => item.product_id !== productId)
+    );
   };
 
   const updateQuantity = (productId, quantity) => {
@@ -45,7 +63,7 @@ function App() {
     }
     setCart((prevCart) =>
       prevCart.map((item) =>
-        item.id === productId ? { ...item, quantity } : item
+        item.product_id === productId ? { ...item, quantity } : item
       )
     );
   };
@@ -57,45 +75,32 @@ function App() {
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <Router>
-      <div className="app">
-        <header className="header">
-          <div className="header-content">
-            <h1>🛒 Micro E-Commerce</h1>
-            <nav className="nav">
-              <Link to="/">Products</Link>
-              <Link to="/cart">
-                Cart
-                {cartItemsCount > 0 && (
-                  <span className="cart-badge">{cartItemsCount}</span>
-                )}
-              </Link>
-            </nav>
-          </div>
-        </header>
+    <div className="app">
+      <Header cartItemsCount={cartItemsCount} />
 
-        <div className="container">
-          <Routes>
-            <Route path="/" element={<Products addToCart={addToCart} />} />
-            <Route
-              path="/product/:id"
-              element={<ProductDetail addToCart={addToCart} />}
-            />
-            <Route
-              path="/cart"
-              element={
-                <Cart
-                  cart={cart}
-                  updateQuantity={updateQuantity}
-                  removeFromCart={removeFromCart}
-                  clearCart={clearCart}
-                />
-              }
-            />
-          </Routes>
-        </div>
+      <div className="container">
+        <Routes>
+          <Route path="/" element={<Products addToCart={addToCart} />} />
+          <Route
+            path="/product/:id"
+            element={<ProductDetail addToCart={addToCart} />}
+          />
+          <Route
+            path="/cart"
+            element={
+              <Cart
+                cart={cart}
+                updateQuantity={updateQuantity}
+                removeFromCart={removeFromCart}
+                clearCart={clearCart}
+              />
+            }
+          />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
       </div>
-    </Router>
+    </div>
   );
 }
 

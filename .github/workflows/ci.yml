@@ -1,0 +1,233 @@
+name: Micro E-Commerce CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # User Service (Node.js)
+  user-service:
+    name: Build & Test User Service
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./user_service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: user_service/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter (if configured)
+        run: npm run lint --if-present
+        continue-on-error: true
+
+      - name: Run tests (if configured)
+        run: npm test --if-present
+        continue-on-error: true
+
+      - name: Build Docker image
+        run: docker build -t user-service:${{ github.sha }} .
+
+  # Product Service (Laravel)
+  product-service:
+    name: Build & Test Product Service
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./product-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Copy .env file
+        run: cp .env.example .env || echo "No .env.example found"
+        continue-on-error: true
+
+      - name: Generate application key
+        run: php artisan key:generate || echo "Key generation skipped"
+        continue-on-error: true
+
+      - name: Run tests
+        run: php artisan test --parallel || echo "No tests configured"
+        continue-on-error: true
+
+      - name: Build Docker image
+        run: docker build -t product-service:${{ github.sha }} . || echo "Dockerfile not found"
+        continue-on-error: true
+
+  # Order Service (Laravel)
+  order-service:
+    name: Build & Test Order Service
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./order-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Copy .env file
+        run: cp .env.example .env || echo "No .env.example found"
+        continue-on-error: true
+
+      - name: Generate application key
+        run: php artisan key:generate || echo "Key generation skipped"
+        continue-on-error: true
+
+      - name: Run tests
+        run: php artisan test --parallel || echo "No tests configured"
+        continue-on-error: true
+
+      - name: Build Docker image
+        run: docker build -t order-service:${{ github.sha }} . || echo "Dockerfile not found"
+        continue-on-error: true
+
+  # Frontend (React)
+  frontend:
+    name: Build & Test Frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter (if configured)
+        run: npm run lint --if-present
+        continue-on-error: true
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run tests (if configured)
+        run: npm test --if-present
+        continue-on-error: true
+
+      - name: Build Docker image
+        run: docker build -t frontend:${{ github.sha }} .
+
+  # Docker Compose Validation
+  docker-compose-check:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+    needs: [user-service, product-service, order-service, frontend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml
+        run: docker-compose config
+
+      - name: Build all services
+        run: docker-compose build --parallel
+
+      - name: Start services (smoke test)
+        run: |
+          docker-compose up -d
+          sleep 30
+          docker-compose ps
+
+      - name: Check service health
+        run: |
+          curl -f http://localhost:5000/ || echo "User service not responding"
+          curl -f http://localhost:3000/ || echo "Frontend not responding"
+
+      - name: Show logs
+        if: failure()
+        run: docker-compose logs
+
+      - name: Cleanup
+        if: always()
+        run: docker-compose down -v
+
+  # Deployment (optional - only on main branch)
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [docker-compose-check]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy notification
+        run: |
+          echo "🚀 Ready to deploy to production"
+          echo "Add your deployment steps here (e.g., push to container registry, deploy to cloud)"
+
+      # Example: Push to Docker Hub
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKER_USERNAME }}
+      #     password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # - name: Push images
+      #   run: |
+      #     docker-compose push

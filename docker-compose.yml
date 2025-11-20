@@ -1,0 +1,216 @@
+# Micro E-Commerce - Complete System Docker Compose
+version: '3.8'
+
+services:
+  # ========================================
+  # Database Services
+  # ========================================
+  
+  # MySQL Database for User Service
+  mysql-user:
+    image: mysql:8.0
+    container_name: mysql-user-service
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: user_service
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_user_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  # MySQL Database for Product Service
+  mysql-product:
+    image: mysql:8.0
+    container_name: mysql-product-service
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: product_service
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_product_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  # MySQL Database for Order Service
+  mysql-order:
+    image: mysql:8.0
+    container_name: mysql-order-service
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: order_service
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_order_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  # ========================================
+  # Backend Microservices
+  # ========================================
+
+  # User Service (Node.js + Express)
+  user-service:
+    build:
+      context: ./user_service
+      dockerfile: Dockerfile
+    container_name: user-service
+    environment:
+      PORT: 5000
+      DB_HOST: mysql-user
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_NAME: user_service
+      DB_PORT: 3306
+      JWT_SECRET: your_super_secret_jwt_key_change_this_in_production
+      NODE_ENV: production
+    ports:
+      - "5000:5000"
+    depends_on:
+      mysql-user:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Product Service (Laravel/PHP)
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    container_name: product-service
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: base64:your_generated_laravel_app_key_here
+      APP_URL: http://localhost:8001
+      DB_CONNECTION: mysql
+      DB_HOST: mysql-product
+      DB_PORT: 3306
+      DB_DATABASE: product_service
+      DB_USERNAME: root
+      DB_PASSWORD: rootpassword
+    ports:
+      - "8001:80"
+    depends_on:
+      mysql-product:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    volumes:
+      - ./product-service:/var/www/html
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Order Service (Laravel/PHP)
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: order-service
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: base64:your_generated_laravel_app_key_here
+      APP_URL: http://localhost:8002
+      DB_CONNECTION: mysql
+      DB_HOST: mysql-order
+      DB_PORT: 3306
+      DB_DATABASE: order_service
+      DB_USERNAME: root
+      DB_PASSWORD: rootpassword
+    ports:
+      - "8002:80"
+    depends_on:
+      mysql-order:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    volumes:
+      - ./order-service:/var/www/html
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ========================================
+  # Frontend Application
+  # ========================================
+
+  # Frontend (React + Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# ========================================
+# Volumes for Data Persistence
+# ========================================
+volumes:
+  mysql_user_data:
+    driver: local
+  mysql_product_data:
+    driver: local
+  mysql_order_data:
+    driver: local
+
+# ========================================
+# Network Configuration
+# ========================================
+networks:
+  microservices-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

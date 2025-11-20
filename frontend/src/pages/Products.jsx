@@ -22,46 +22,52 @@ function Products({ addToCart }) {
       // Sample data for demo purposes
       setProducts([
         {
-          id: 1,
-          name: "Laptop",
-          description: "High-performance laptop for professionals",
-          price: 999.99,
-          stock: 10,
+          product_id: 1,
+          user_id: 1,
+          product_name: "Laptop",
+          product_price: 999.99,
+          product_quantity: 10,
+          product_category: "Electronics",
         },
         {
-          id: 2,
-          name: "Wireless Mouse",
-          description: "Ergonomic wireless mouse with long battery life",
-          price: 29.99,
-          stock: 50,
+          product_id: 2,
+          user_id: 1,
+          product_name: "Wireless Mouse",
+          product_price: 29.99,
+          product_quantity: 50,
+          product_category: "Electronics",
         },
         {
-          id: 3,
-          name: "Mechanical Keyboard",
-          description: "RGB backlit mechanical keyboard",
-          price: 89.99,
-          stock: 25,
+          product_id: 3,
+          user_id: 1,
+          product_name: "Mechanical Keyboard",
+          product_price: 89.99,
+          product_quantity: 25,
+          product_category: "Electronics",
         },
         {
-          id: 4,
-          name: "USB-C Hub",
-          description: "Multi-port USB-C hub with HDMI and USB 3.0",
-          price: 49.99,
-          stock: 30,
+          product_id: 4,
+          user_id: 1,
+          product_name: "USB-C Hub",
+          product_price: 49.99,
+          product_quantity: 30,
+          product_category: "Accessories",
         },
         {
-          id: 5,
-          name: "Webcam HD",
-          description: "1080p HD webcam with built-in microphone",
-          price: 79.99,
-          stock: 15,
+          product_id: 5,
+          user_id: 1,
+          product_name: "Webcam HD",
+          product_price: 79.99,
+          product_quantity: 15,
+          product_category: "Electronics",
         },
         {
-          id: 6,
-          name: "Headphones",
-          description: "Noise-cancelling wireless headphones",
-          price: 149.99,
-          stock: 20,
+          product_id: 6,
+          user_id: 1,
+          product_name: "Headphones",
+          product_price: 149.99,
+          product_quantity: 20,
+          product_category: "Audio",
         },
       ]);
     } finally {
@@ -71,7 +77,7 @@ function Products({ addToCart }) {
 
   const handleAddToCart = (product) => {
     addToCart(product);
-    alert(`${product.name} added to cart!`);
+    alert(`${product.product_name} added to cart!`);
   };
 
   if (loading) {
@@ -88,27 +94,36 @@ function Products({ addToCart }) {
       ) : (
         <div className="products-grid">
           {products.map((product) => (
-            <div key={product.id} className="product-card">
+            <div key={product.product_id} className="product-card">
               <Link
-                to={`/product/${product.id}`}
+                to={`/product/${product.product_id}`}
                 style={{ textDecoration: "none", color: "inherit" }}
               >
                 <div className="product-image">📦</div>
                 <div className="product-info">
-                  <h3 className="product-name">{product.name}</h3>
-                  <p className="product-description">{product.description}</p>
+                  <h3 className="product-name">{product.product_name}</h3>
+                  <p
+                    className="product-description"
+                    style={{ fontSize: "0.85rem", color: "#888" }}
+                  >
+                    {product.product_category}
+                  </p>
                   <div className="product-price">
-                    ${product.price.toFixed(2)}
+                    ${product.product_price.toFixed(2)}
                   </div>
-                  <div className="product-stock">In stock: {product.stock}</div>
+                  <div className="product-stock">
+                    In stock: {product.product_quantity}
+                  </div>
                 </div>
               </Link>
               <div style={{ padding: "0 1rem 1rem" }}>
                 <button
                   onClick={() => handleAddToCart(product)}
-                  disabled={product.stock === 0}
+                  disabled={product.product_quantity === 0}
                 >
-                  {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                  {product.product_quantity === 0
+                    ? "Out of Stock"
+                    : "Add to Cart"}
                 </button>
               </div>
             </div>
