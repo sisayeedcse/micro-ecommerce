@@ -22,10 +22,12 @@ function App() {
 
   const addToCart = (product) => {
     setCart((prevCart) => {
-      const existing = prevCart.find((item) => item.id === product.id);
+      const existing = prevCart.find(
+        (item) => item.product_id === product.product_id
+      );
       if (existing) {
         return prevCart.map((item) =>
-          item.id === product.id
+          item.product_id === product.product_id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -35,7 +37,9 @@ function App() {
   };
 
   const removeFromCart = (productId) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+    setCart((prevCart) =>
+      prevCart.filter((item) => item.product_id !== productId)
+    );
   };
 
   const updateQuantity = (productId, quantity) => {
@@ -45,7 +49,7 @@ function App() {
     }
     setCart((prevCart) =>
       prevCart.map((item) =>
-        item.id === productId ? { ...item, quantity } : item
+        item.product_id === productId ? { ...item, quantity } : item
       )
     );
   };

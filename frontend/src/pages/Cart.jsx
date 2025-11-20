@@ -7,7 +7,10 @@ function Cart({ cart, updateQuantity, removeFromCart, clearCart }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = cart.reduce(
+    (sum, item) => sum + item.product_price * item.quantity,
+    0
+  );
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -21,9 +24,9 @@ function Cart({ cart, updateQuantity, removeFromCart, clearCart }) {
 
       const orderData = {
         items: cart.map((item) => ({
-          product_id: item.id,
+          product_id: item.product_id,
           quantity: item.quantity,
-          price: item.price,
+          price: item.product_price,
         })),
         total: total,
       };
@@ -86,22 +89,29 @@ function Cart({ cart, updateQuantity, removeFromCart, clearCart }) {
         <>
           <div className="cart-items">
             {cart.map((item) => (
-              <div key={item.id} className="cart-item">
+              <div key={item.product_id} className="cart-item">
                 <div className="cart-item-info">
-                  <h3>{item.name}</h3>
-                  <p>${item.price.toFixed(2)} each</p>
+                  <h3>{item.product_name}</h3>
+                  <p>${item.product_price.toFixed(2)} each</p>
+                  <p style={{ fontSize: "0.85rem", color: "#888" }}>
+                    Category: {item.product_category}
+                  </p>
                 </div>
 
                 <div className="cart-item-actions">
                   <div className="quantity-controls">
                     <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      onClick={() =>
+                        updateQuantity(item.product_id, item.quantity - 1)
+                      }
                     >
                       -
                     </button>
                     <span>{item.quantity}</span>
                     <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      onClick={() =>
+                        updateQuantity(item.product_id, item.quantity + 1)
+                      }
                     >
                       +
                     </button>
@@ -114,11 +124,11 @@ function Cart({ cart, updateQuantity, removeFromCart, clearCart }) {
                       textAlign: "right",
                     }}
                   >
-                    ${(item.price * item.quantity).toFixed(2)}
+                    ${(item.product_price * item.quantity).toFixed(2)}
                   </div>
 
                   <button
-                    onClick={() => removeFromCart(item.id)}
+                    onClick={() => removeFromCart(item.product_id)}
                     className="danger"
                     style={{ width: "auto", padding: "0.5rem 1rem" }}
                   >

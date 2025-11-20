@@ -24,28 +24,28 @@ function ProductDetail({ addToCart }) {
       // Sample data for demo
       const sampleProducts = {
         1: {
-          id: 1,
-          name: "Laptop",
-          description:
-            "High-performance laptop perfect for professionals and gamers. Features the latest processor, ample RAM, and a stunning display.",
-          price: 999.99,
-          stock: 10,
+          product_id: 1,
+          user_id: 1,
+          product_name: "Laptop",
+          product_price: 999.99,
+          product_quantity: 10,
+          product_category: "Electronics",
         },
         2: {
-          id: 2,
-          name: "Wireless Mouse",
-          description:
-            "Ergonomic wireless mouse designed for comfort during extended use. Features long battery life and precise tracking.",
-          price: 29.99,
-          stock: 50,
+          product_id: 2,
+          user_id: 1,
+          product_name: "Wireless Mouse",
+          product_price: 29.99,
+          product_quantity: 50,
+          product_category: "Electronics",
         },
         3: {
-          id: 3,
-          name: "Mechanical Keyboard",
-          description:
-            "Premium RGB backlit mechanical keyboard with customizable keys and superior typing experience.",
-          price: 89.99,
-          stock: 25,
+          product_id: 3,
+          user_id: 1,
+          product_name: "Mechanical Keyboard",
+          product_price: 89.99,
+          product_quantity: 25,
+          product_category: "Electronics",
         },
       };
       setProduct(sampleProducts[id] || null);
@@ -56,7 +56,7 @@ function ProductDetail({ addToCart }) {
 
   const handleAddToCart = () => {
     addToCart(product);
-    alert(`${product.name} added to cart!`);
+    alert(`${product.product_name} added to cart!`);
   };
 
   if (loading) {
@@ -79,13 +79,25 @@ function ProductDetail({ addToCart }) {
         <div className="product-detail-image">📦</div>
 
         <div className="product-detail-info">
-          <h1>{product.name}</h1>
-          <div className="product-price">${product.price.toFixed(2)}</div>
-          <div className="product-stock">In stock: {product.stock}</div>
-          <p className="product-description">{product.description}</p>
+          <h1>{product.product_name}</h1>
+          <div className="product-price">
+            ${product.product_price.toFixed(2)}
+          </div>
+          <div className="product-stock">
+            In stock: {product.product_quantity}
+          </div>
+          <p
+            className="product-description"
+            style={{ fontSize: "1rem", color: "#666", marginBottom: "0.5rem" }}
+          >
+            <strong>Category:</strong> {product.product_category}
+          </p>
 
-          <button onClick={handleAddToCart} disabled={product.stock === 0}>
-            {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+          <button
+            onClick={handleAddToCart}
+            disabled={product.product_quantity === 0}
+          >
+            {product.product_quantity === 0 ? "Out of Stock" : "Add to Cart"}
           </button>
         </div>
       </div>
