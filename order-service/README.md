@@ -1,66 +1,168 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Order Service
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Node.js microservice that manages user orders for a simple e-commerce platform. It exposes REST endpoints, persists data in MySQL, fetches product data from `product-service`, and authenticates requests with JWTs issued by `user-service`.
 
-## About Laravel
+## Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Node.js 18+
+- MySQL (tested with XAMPP/phpMyAdmin)
+- Product service reachable at `http://product-service` (configurable via env)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Environment
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Copy `.env` and adjust if needed:
 
-## Learning Laravel
+```
+PORT=4002
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=order_service
+DB_PORT=3306
+JWT_SECRET=mysecret
+PRODUCT_SERVICE_URL=http://product-service
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Install & Run
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```bash
+npm install
+npm run dev   # nodemon
+# or
+npm start     # plain node
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The service automatically ensures the `orders` table exists on startup via `CREATE TABLE IF NOT EXISTS`.
 
-## Laravel Sponsors
+## Authentication Flow (user-service → order-service)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+1. A client authenticates with `user-service` (or auth gateway) and receives a JWT containing at least `id`, `name`, and `email` claims.
+2. The client calls any `/orders` endpoint with `Authorization: Bearer <token>`.
+3. `order-service` verifies the token using `JWT_SECRET`. If valid, it attaches `req.user = { id, name, email }` and uses `user.id` as `user_id` for all queries. Payloads never accept `user_id` directly, eliminating spoofing risks.
 
-### Premium Partners
+## Product-Service Integration (axios)
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+- `order-service` calls `GET ${PRODUCT_SERVICE_URL}/products/:id` through axios before every order creation.
+- Response is expected to expose at least `price` and `stock`.
+- The service aborts order creation if the product is unavailable or stock is insufficient and computes `total_price = price * quantity` locally before inserting the order.
 
-## Contributing
+## API Endpoints
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+All endpoints require `Authorization: Bearer <jwt>`.
 
-## Code of Conduct
+### POST /orders
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Create an order using the authenticated user and product data.
 
-## Security Vulnerabilities
+**Request**
+```
+POST http://localhost:4002/orders
+Headers:
+  Content-Type: application/json
+  Authorization: Bearer <jwt>
+Body:
+{
+  "product_id": 12,
+  "quantity": 2
+}
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+**Response** `201`
+```
+{
+  "id": 5,
+  "user_id": 3,
+  "product_id": 12,
+  "quantity": 2,
+  "total_price": "199.98",
+  "status": "pending",
+  "created_at": "2025-11-21T10:24:18.000Z"
+}
+```
 
-## License
+### GET /orders
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Fetch all orders for the authenticated user.
+
+**Request**
+```
+GET http://localhost:4002/orders
+Headers:
+  Authorization: Bearer <jwt>
+```
+
+**Response** `200`
+```
+[
+  {
+    "id": 5,
+    "user_id": 3,
+    "product_id": 12,
+    "quantity": 2,
+    "total_price": "199.98",
+    "status": "pending",
+    "created_at": "2025-11-21T10:24:18.000Z"
+  }
+]
+```
+
+### GET /orders/:id
+
+Fetch a single order (only if owned by the user).
+
+**Request**
+```
+GET http://localhost:4002/orders/5
+Headers:
+  Authorization: Bearer <jwt>
+```
+
+**Response** `200`
+```
+{
+  "id": 5,
+  "user_id": 3,
+  "product_id": 12,
+  "quantity": 2,
+  "total_price": "199.98",
+  "status": "pending",
+  "created_at": "2025-11-21T10:24:18.000Z"
+}
+```
+
+### DELETE /orders/:id
+
+Cancel an order if it is still `pending`.
+
+**Request**
+```
+DELETE http://localhost:4002/orders/5
+Headers:
+  Authorization: Bearer <jwt>
+```
+
+**Response** `200`
+```
+{
+  "id": 5,
+  "user_id": 3,
+  "product_id": 12,
+  "quantity": 2,
+  "total_price": "199.98",
+  "status": "cancelled",
+  "created_at": "2025-11-21T10:24:18.000Z"
+}
+```
+
+## Testing with Postman
+
+1. Create a collection called `Order Service`.
+2. Add the four requests above, set the base URL variable if desired.
+3. Under the collection, add an auth token (in `Authorization` tab) or set `Authorization` header manually.
+4. Save example responses to share with the team.
+
+## Notes
+
+- Ensure the `order_service` database exists; the service creates only the `orders` table.
+- Customize pool size via environment variables if needed.
+- Extend status transitions (e.g., `confirmed`) through additional endpoints or message brokers as the system evolves.
