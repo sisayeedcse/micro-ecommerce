@@ -14,6 +14,11 @@ export default defineConfig({
         target: "http://localhost:8002",
         changeOrigin: true,
       },
+      "/api/user-service": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/user-service/, ""),
+      },
     },
   },
 });
